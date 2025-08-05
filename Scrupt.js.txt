@@ -1,0 +1,154 @@
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const birdImg = new Image();
+birdImg.src = "https://i.postimg.cc/sxv5vT1L/Screenshot-20250731-005347-Gallery.jpg";
+
+const coinImg = new Image();
+coinImg.src = "https://i.postimg.cc/bYDrpCyn/IMG-1013.png";
+
+let bird = {
+  x: 100,
+  y: 200,
+  width: 50,
+  height: 50,
+  gravity: 0.5,
+  velocity: 0,
+  jumpPower: -8
+};
+
+let pipes = [];
+let coins = [];
+let score = 0;
+let isPlaying = false;
+
+function drawBird() {
+  ctx.drawImage(birdImg, bird.x, bird.y, bird.width, bird.height);
+}
+
+function drawPipe(pipe) {
+  ctx.fillStyle = "green";
+  ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+  ctx.fillRect(pipe.x, pipe.top + pipe.gap, pipe.width, canvas.height - pipe.top - pipe.gap);
+}
+
+function drawCoin(coin) {
+  if (coinImg.complete) {
+    ctx.drawImage(coinImg, coin.x - 15, coin.y - 15, 30, 30);
+  } else {
+    ctx.beginPath();
+    ctx.arc(coin.x, coin.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "gold";
+    ctx.fill();
+  }
+}
+
+function resetGame() {
+  bird.y = 200;
+  bird.velocity = 0;
+  pipes = [];
+  coins = [];
+  score = 0;
+  document.getElementById("scoreBoard").textContent = `점수: ${score}`;
+}
+
+function gameOver() {
+  isPlaying = false;
+  document.getElementById("startScreen").style.display = "flex";
+}
+
+function gameLoop() {
+  if (!isPlaying) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  bird.velocity += bird.gravity;
+  bird.y += bird.velocity;
+
+  if (bird.y + bird.height > canvas.height) {
+    gameOver();
+    return;
+  }
+
+  if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 300) {
+    const top = Math.random() * (canvas.height / 2);
+    pipes.push({ x: canvas.width, top: top, gap: 180, width: 60 });
+  }
+
+  for (let i = pipes.length - 1; i >= 0; i--) {
+    const pipe = pipes[i];
+    pipe.x -= 3;
+
+    drawPipe(pipe);
+
+    if (
+      bird.x < pipe.x + pipe.width &&
+      bird.x + bird.width > pipe.x &&
+      (bird.y < pipe.top || bird.y + bird.height > pipe.top + pipe.gap)
+    ) {
+      gameOver();
+      return;
+    }
+
+    if (pipe.x + pipe.width < 0) {
+      pipes.splice(i, 1);
+    }
+  }
+
+  if (Math.random() < 0.01) {
+    coins.push({
+      x: canvas.width,
+      y: Math.random() * (canvas.height - 100) + 50
+    });
+  }
+
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const coin = coins[i];
+    coin.x -= 3;
+
+    drawCoin(coin);
+
+    if (
+      bird.x < coin.x + 15 &&
+      bird.x + bird.width > coin.x - 15 &&
+      bird.y < coin.y + 15 &&
+      bird.y + bird.height > coin.y - 15
+    ) {
+      score += 1000;
+      coins.splice(i, 1);
+    }
+
+    if (coin.x + 30 < 0) {
+      coins.splice(i, 1);
+    }
+  }
+
+  drawBird();
+
+  score++;
+  document.getElementById("scoreBoard").textContent = `점수: ${score}`;
+
+  requestAnimationFrame(gameLoop);
+}
+
+function jump() {
+  if (isPlaying) {
+    bird.velocity = bird.jumpPower;
+  }
+}
+window.addEventListener("mousedown", jump);
+window.addEventListener("touchstart", jump);
+
+document.getElementById("startBtn").addEventListener("click", () => {
+  resetGame();
+  document.getElementById("startScreen").style.display = "none";
+  isPlaying = true;
+  gameLoop();
+});
+
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+});
